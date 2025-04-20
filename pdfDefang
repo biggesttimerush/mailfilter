@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Input is a file or stdin in PDF format, output is a PDF to stdout
+
+# Convert (a maximum of 9999) PDF pages to PNG image files with
+# laser printer quality
+prefix="/tmp/pdfDefangMDFilter"
+
+mutool draw -r 300 -o "${prefix}-%04d.png" "${1:-/dev/stdin}"
+if [ $? -ne 0 ]; then
+  exit $?
+fi
+
+# Merge all the pages and re-add text via OCR
+ls "${prefix}-"*.png > /tmp/pdfDefangMDFilter.txt
+tesseract /tmp/pdfDefangMDFilter.txt - pdf
+exit $?

@@ -1,0 +1,20 @@
+Bootstrap: docker
+From: fedora:41
+
+%files
+    pdfDefang /usr/local/share
+
+%runscript
+    exec /usr/local/share/pdfDefang <"$1" >"FILTEROUTPUT"
+
+%post
+    dnf -q -y update
+    dnf -q -y install mupdf
+    dnf -q -y install tesseract
+    dnf -q -y clean all
+
+%labels
+    Version v0.4
+
+%help
+    Container for PDF sanitization script.

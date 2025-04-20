@@ -1,0 +1,37 @@
+
+module mimedefang-apptainer 1.0;
+
+require {
+	type spamd_t;
+	type root_t;
+	type kernel_t;
+	type var_lib_t;
+	type fs_t;
+	type nsfs_t;
+	type tmpfs_t;
+	type fusefs_t;
+	type fuse_device_t;
+	class user_namespace create;
+	class cap_userns { sys_admin sys_chroot setpcap setuid };
+	class file { open read write execute execute_no_trans create getattr mounton };
+	class chr_file { open read write ioctl };
+	class dir { create mounton };
+	class filesystem { mount unmount remount };
+	class system module_request;
+}
+
+#============= spamd_t ==============
+dontaudit spamd_t self:cap_userns setuid;
+dontaudit spamd_t kernel_t:system module_request;
+allow spamd_t self:cap_userns { sys_admin sys_chroot setpcap };
+allow spamd_t root_t:dir mounton;
+allow spamd_t var_lib_t:dir mounton;
+allow spamd_t fs_t:filesystem { mount unmount remount };
+allow spamd_t nsfs_t:file { open read };
+allow spamd_t tmpfs_t:file { open read write create getattr mounton };
+allow spamd_t tmpfs_t:dir { create mounton };
+allow spamd_t tmpfs_t:filesystem { mount remount };
+allow spamd_t fusefs_t:file { execute execute_no_trans mounton };
+allow spamd_t fusefs_t:dir mounton;
+allow spamd_t fusefs_t:filesystem { mount unmount };
+allow spamd_t fuse_device_t:chr_file { open read write ioctl };
