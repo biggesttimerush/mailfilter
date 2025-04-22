@@ -1,0 +1,47 @@
+# -*- Perl -*-
+use strict;
+use warnings;
+
+# Standard definitions
+$AdminAddress  = 'postmaster@localhost';
+$AdminName     = "MIMEDefang Administrator";
+$DaemonAddress = 'mimedefang@localhost';
+
+# Syslog integration
+md_graphdefang_log_enable('mail', 1);
+
+# Use ClamAV socket for virus scanning
+$ClamdSock = "/run/clamd.scan/clamd.sock";
+
+# Main filter logic
+sub filter {
+    my($entity, $fname, $ext, $type) = @_;
+
+    return if message_rejected();  # Avoid unnecessary work
+
+    # Virus scan using ClamAV
+    my($code, $category, $message) = message_contains_virus_clamd();
+    if ($code eq "VIRUS") {
+        md_syslog('warning', "Virus found: $message");
+        return action_bounce("This message contains a virus and was rejected.");
+    }
+
+    # Filter bad filenames
+    if (filter_bad_filename($entity)) {
+        md_graphdefang_log('bad_filename', $fname, $type);
+        return action_drop_with_warning("An attachment named $fname was removed.");
+    }
+
+    # PDF sanitizer with Apptainer
+    if (lc($type) eq 'application/pdf') {
+        md_syslog('warning', 'DEBUG: PDF file detected');
+        if (action_external_filter($entity, 'apptainer run --userns /usr/local/share/pdfDefang.sif ./FILTERINPUT')) {
+            md_syslog('warning', 'DEBUG: PDF sanitization successful.');
+            return action_accept_with_warning('The attached PDF has been sanitized.');
+        } else {
+            return action_drop_with_warning('PDF filter failed, an attachment was removed.');
+        }
+    }
+
+    return action_accept();
+}
